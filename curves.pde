@@ -1,15 +1,15 @@
-PImage img;  // Declare variable "a" of type PImage
-int image = 1;
+PImage img; 
+int image = 1; // select which image to use
 String file;
 Wave myWave;
 float w;
 float h;
-int pt = 3200;
-int[] X = new int[pt];
-int[] Y = new int[pt];
-int max = 10;
-int[] st = new int[max*2];
-int ww = 0;
+int pt = 2200; // number of points to generate shapes - e.g. sample points on image
+int[] X = new int[pt]; // container for the sample points - X
+int[] Y = new int[pt]; // container for the sample points - Y
+int max = 10; // max value for the sawtooth wave modulator
+int[] st = new int[max*2]; // contained for the sawtooth modulator
+int modulator_pointer = 0; // modulator loop counter for draw loop
 String FOLDER = "./source_images/";
 
 void setup() {
@@ -46,19 +46,28 @@ void setup() {
 }
 
 
-
+float freq = 5;
+float amplitude = 10;
+float step = 2;
+int shift = 3;
+float rotate = 0;
+boolean black_background = false;
+String shape_form = "sinewave"; // or choose "ellipse"
 
 void draw() {
   image(img, 0, 0);
-  float r = (random(1))-(random(1.5));
-  float rot = random(0.5);
-  ptz(5,2*st[ww],r,3,rot,false);
-  ww++;
+  step = (random(1))-(random(1.5));
+  rotate = random(0.5);
+  amplitude = 2*st[modulator_pointer];
+  ptz(freq,amplitude,step,shift,rotate,black_background,shape_form);
+  modulator_pointer++;
   //print(st[ww]);
-  if (ww==st.length-1){
-    ww = 0;}
+  if (modulator_pointer==st.length-1){
+    modulator_pointer = 0;}
 }
 
+// Create an integer list incremeting from 1 to max and back down to 1
+// To-do: later we can use other curves for modulation
 void sawtooth(){
   for(int i = 0; i<max; i++){
     st[i] = i+1;
@@ -66,11 +75,11 @@ void sawtooth(){
   for(int i = max; i<2*max; i++){
     st[i] = 2*max-i;
   }
-  //print(st);
 }
 
+// Create a set of random points from within the image's Euclidean space
+// Optionally confine to the bounding box <(xl,yl)(xr,yr)> if these vals not set to -1
 void rand_points(PImage img, int xl, int yl, int xr, int yr) {
-  //img.loadPixels();
   for (int i=0; i<pt; i++) {
     if(xl==-1 && xr==-1){
       X[i] = int(random(img.width));
@@ -85,8 +94,9 @@ void rand_points(PImage img, int xl, int yl, int xr, int yr) {
   }
 }
 
-void ptz(float f, float a, float s, int shift, float rotate, boolean bg, boolean shape) {
-  
+// Create the matrix of shapes, currently either shape=="ellipse" or shape=="sine"
+// To-do: create a shape class to pass into the method
+void ptz(float f, float a, float s, int shift, float rotate, boolean bg, String shape) {
   
   if (bg) background(0);
   //smooth();
@@ -109,13 +119,17 @@ void ptz(float f, float a, float s, int shift, float rotate, boolean bg, boolean
   
   noStroke();
   
-  // Optionally - draw an ellipse at that location with that color
-  if (shape) {
-    int pointillize = int(random(3,35));
+  // Draw an ellipse at that location with that color
+  if (shape=="ellipse") {
+    int pointillize_x = int(random(0,15));
+    int pointillize_y = int(random(3,300));
     fill(r,g,b,100);
-    ellipse(x,y,pointillize,pointillize);
-  }
-  
+    //stroke(color(r,g,b));
+    //pushMatrix();
+    //rotate(random(0,0.5));
+    ellipse(x,y,pointillize_x,pointillize_y);
+    //popMatrix();
+  } else if (shape=="sinewave") {
   // draw a wave at that position
    if(r>0) { 
      float rd = 10;//random(1,50);
@@ -128,14 +142,13 @@ void ptz(float f, float a, float s, int shift, float rotate, boolean bg, boolean
        myWave = new Wave(x,y,r,g,b,f,a,s,0,rotate,TWO_PI);
      }
       myWave.display();
-     
-   
- 
- }
+   }
   }
   
 }
+}
 
+// Generic pair class for tuples - not used
 class Pair<T> {
   private final T X;
   private final T Y;
@@ -148,22 +161,23 @@ class Pair<T> {
   }
   public T Y() {
     return Y;
-}
+  }
 }
 
+// The class for generating sine waves at the given point
+// To-do: pass in a waveform generator class to try different waveforms
 class Wave {
-
-  int x;
-  int y;
-  float r;
-  float g;
-  float b;
-  float freq;
-  float amplitude;
-  float step;
-  int shift = 1;
-  float rotate = 0;
-  float period = TWO_PI;
+  int x; // position
+  int y; // position
+  float r; // red
+  float g; // green
+  float b; // blue
+  float freq; // "frequency" of sinewave
+  float amplitude; // "amplitude" of sinewave
+  float step; // kind of like the "sampling" frequency
+  int shift = 1; // phase shift
+  float rotate = 0; // x-axis rotation
+  float period = TWO_PI; // periodicity - really a constant, but can be altered
   
   Wave(int _x, int _y, float _r, float _g, float _b, float _f, float _a, float _s, int _shift, float _rotate, float _period) {
     x = _x; y = _y; r = _r; g = _g; b = _b; 
@@ -181,6 +195,7 @@ class Wave {
     rotate(rotate);
     //scale(2.0);
     beginShape();
+    // optional waveform shape - hard-coded here
     /*
     curveVertex(20, 20); // the first control point
     curveVertex(20, 20); // is also the start point of curve
@@ -190,6 +205,7 @@ class Wave {
     curveVertex(25, 75); // the last point of curve
     curveVertex(25, 75); // is also the last control point
     */
+    // sinewave generator
     float x = 0;
     for (float a = 0; a < period; a += 0.1) {
       vertex(x,amplitude*sin(freq*a));
